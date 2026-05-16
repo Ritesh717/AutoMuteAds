@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AutoMuteAds — UI Test Preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #060a17;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #e2e8f0;
+    }
+    .phone-frame {
+      width: 360px;
+      background: #0a0f1e;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 25px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+    }
+    /* glassmorphism utility */
+    .glass {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .glow-blue { box-shadow: 0 0 20px rgba(11, 165, 236, 0.3); }
+    .text-gradient {
+      background: linear-gradient(135deg, #0ba5ec 0%, #7c3aed 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    /* layout */
+    .header {
+      padding: 20px 20px 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .logo {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #0ba5ec, #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 4px 12px rgba(11,165,236,0.25);
+    }
+    .header-text h1 { font-size: 14px; font-weight: 700; color: #fff; }
+    .header-text p  { font-size: 10px; color: #64748b; margin-top: 1px; }
+
+    /* content */
+    .content { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    /* hero */
+    .hero {
+      border-radius: 16px; padding: 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      transition: all 0.4s ease;
+    }
+    .hero.active { border-color: rgba(11,165,236,0.2) !important; }
+    .hero-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: #94a3b8; margin-bottom: 4px; }
+    .hero-title { font-size: 22px; font-weight: 700; }
+    .hero-status { font-size: 11px; color: #f59e0b; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+
+    .toggle-btn {
+      width: 64px; height: 64px; border-radius: 16px;
+      border: none; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.3s ease;
+      font-size: 28px;
+    }
+    .toggle-btn.on {
+      background: linear-gradient(135deg, #3b82f6, #7c3aed);
+      box-shadow: 0 8px 24px rgba(59,130,246,0.35);
+    }
+    .toggle-btn.off { background: #1e293b; }
+    .toggle-btn:hover { transform: scale(1.06); }
+
+    /* stats */
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .stat-card { border-radius: 12px; padding: 16px; }
+    .stat-label { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b; margin-bottom: 4px; }
+    .stat-value { font-size: 28px; font-weight: 700; color: #fff; line-height: 1; }
+    .stat-sub { font-size: 10px; color: #475569; margin-top: 2px; }
+
+    /* pill */
+    .pill { border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot.active { background: #34d399; animation: pulse 2s infinite; }
+    .dot.inactive { background: #334155; }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .pill-text { font-size: 13px; color: #94a3b8; }
+
+    /* settings */
+    .panel { display: none; flex-direction: column; gap: 16px; }
+    .panel.active-panel { display: flex; }
+
+    .section { border-radius: 12px; padding: 16px; }
+    .section-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: #e2e8f0; margin-bottom: 12px; }
+    .sens-btn {
+      width: 100%; text-align: left; border-radius: 8px; padding: 10px 12px;
+      border: 1px solid transparent; cursor: pointer; transition: all 0.2s;
+      background: rgba(30,41,59,0.4); margin-bottom: 8px; color: #64748b;
+    }
+    .sens-btn:last-child { margin-bottom: 0; }
+    .sens-btn.selected { background: rgba(59,130,246,0.2); border-color: rgba(59,130,246,0.4); color: #93c5fd; }
+    .sens-btn:hover:not(.selected) { border-color: #475569; }
+    .sens-name { font-size: 13px; font-weight: 500; }
+    .sens-desc { font-size: 11px; color: #475569; margin-top: 2px; }
+    .sens-btn.selected .sens-desc { color: #6ea8fe; }
+
+    .slider-row { margin-bottom: 16px; }
+    .slider-row:last-child { margin-bottom: 0; }
+    .slider-label { display: flex; justify-content: space-between; font-size: 11px; color: #64748b; margin-bottom: 8px; }
+    .slider-val { color: #60a5fa; font-weight: 500; }
+    input[type=range] { width: 100%; accent-color: #3b82f6; cursor: pointer; }
+
+    /* whitelist */
+    .wl-input-row { display: flex; gap: 8px; margin-bottom: 8px; }
+    .wl-input {
+      flex: 1; background: rgba(30,41,59,0.6); border: 1px solid rgba(71,85,105,0.5);
+      border-radius: 8px; padding: 8px 12px; font-size: 13px; color: #e2e8f0;
+      outline: none; font-family: inherit; transition: border-color 0.2s;
+    }
+    .wl-input:focus { border-color: rgba(59,130,246,0.5); }
+    .wl-input::placeholder { color: #475569; }
+    .wl-add {
+      display: flex; align-items: center; gap: 6px;
+      padding: 8px 14px; background: #2563eb; border: none; border-radius: 8px;
+      font-size: 13px; font-weight: 500; color: #fff; cursor: pointer;
+      font-family: inherit; transition: background 0.2s;
+    }
+    .wl-add:hover { background: #3b82f6; }
+    .wl-empty { font-size: 13px; color: #334155; text-align: center; padding: 24px 0; }
+    .wl-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(30,41,59,0.4); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px;
+    }
+    .wl-domain { font-size: 13px; color: #cbd5e1; }
+    .wl-rm { background: none; border: none; color: #475569; cursor: pointer; font-size: 16px; padding: 4px; transition: color 0.2s; }
+    .wl-rm:hover { color: #f87171; }
+
+    /* bottom nav */
+    nav {
+      display: flex; border-top: 1px solid rgba(255,255,255,0.05);
+      background: #080c18;
+    }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 4px; padding: 12px 0;
+      font-size: 10px; font-weight: 500; border: none; background: none;
+      color: #334155; cursor: pointer; transition: color 0.2s; font-family: inherit;
+    }
+    .nav-btn.active { color: #60a5fa; }
+    .nav-btn:hover:not(.active) { color: #64748b; }
+
+    /* bg orbs */
+    .orb1 { position: absolute; top: -40px; right: -40px; width: 160px; height: 160px; background: rgba(59,130,246,0.08); border-radius: 50%; filter: blur(40px); pointer-events: none; }
+    .orb2 { position: absolute; bottom: -40px; left: -40px; width: 160px; height: 160px; background: rgba(124,58,237,0.08); border-radius: 50%; filter: blur(40px); pointer-events: none; }
+    .relative { position: relative; overflow: hidden; }
+
+    .save-msg { text-align: center; font-size: 11px; color: #34d399; font-weight: 500; animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body>
+<div class="phone-frame">
+  <div class="relative">
+    <div class="orb1"></div>
+    <div class="orb2"></div>
+
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">🔇</div>
+      <div class="header-text">
+        <h1>AutoMuteAds</h1>
+        <p>Silence interruptions. Keep the content.</p>
+      </div>
+    </header>
+
+    <!-- ── DASHBOARD PANEL ── -->
+    <div id="panel-dashboard" class="content panel active-panel">
+
+      <!-- Hero status -->
+      <div class="glass hero glow-blue" id="hero">
+        <div>
+          <p class="hero-label" id="hero-label">Protection Active</p>
+          <h2 class="hero-title text-gradient" id="hero-title">AutoMuteAds</h2>
+        </div>
+        <button class="toggle-btn on" id="toggle-btn" onclick="toggleExt()" aria-label="Toggle extension">🔊</button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats">
+        <div class="glass stat-card">
+          <div class="stat-label">🛡 Ads Blocked</div>
+          <div class="stat-value" id="stat-count">0</div>
+          <div class="stat-sub">all-time</div>
+        </div>
+        <div class="glass stat-card">
+          <div class="stat-label">⏱ Time Saved</div>
+          <div class="stat-value" id="stat-time">0s</div>
+          <div class="stat-sub">total</div>
+        </div>
+      </div>
+
+      <!-- Status pill -->
+      <div class="glass pill">
+        <span class="dot active" id="status-dot"></span>
+        <p class="pill-text" id="status-text">Monitoring all tabs for ads…</p>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS PANEL ── -->
+    <div id="panel-settings" class="content panel">
+      <div class="glass section">
+        <p class="section-title">Detection Sensitivity</p>
+        <button class="sens-btn" id="sens-conservative" onclick="setSens('conservative')">
+          <div class="sens-name">Conservative</div>
+          <div class="sens-desc">Fewer false positives, may miss some ads</div>
+        </button>
+        <button class="sens-btn selected" id="sens-balanced" onclick="setSens('balanced')">
+          <div class="sens-name">Balanced</div>
+          <div class="sens-desc">Recommended — good accuracy</div>
+        </button>
+        <button class="sens-btn" id="sens-aggressive" onclick="setSens('aggressive')">
+          <div class="sens-name">Aggressive</div>
+          <div class="sens-desc">Catches more ads, higher false-positive risk</div>
+        </button>
+      </div>
+
+      <div class="glass section">
+        <p class="section-title">Timing</p>
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Mute delay</span>
+            <span class="slider-val" id="mute-val">300ms</span>
+          </div>
+          <input type="range" min="0" max="2000" step="100" value="300"
+            oninput="document.getElementById('mute-val').textContent = this.value + 'ms'; showSaved();" />
+        </div>
+        <div class="slider-row">
+          <div class="slider-label">
+            <span>Unmute delay</span>
+            <span class="slider-val" id="unmute-val">500ms</span>
+          </div>
+          <input type="range" min="0" max="3000" step="100" value="500"
+            oninput="document.getElementById('unmute-val').textContent = this.value + 'ms'; showSaved();" />
+        </div>
+      </div>
+
+      <div id="save-msg" style="display:none;" class="save-msg">✓ Settings saved</div>
+    </div>
+
+    <!-- ── WHITELIST PANEL ── -->
+    <div id="panel-whitelist" class="content panel">
+      <div class="glass section">
+        <p class="section-title">Add Website</p>
+        <p style="font-size:11px;color:#475569;margin-bottom:12px;">AutoMuteAds will be disabled on whitelisted sites.</p>
+        <div class="wl-input-row">
+          <input class="wl-input" id="wl-input" type="text" placeholder="e.g. youtube.com" />
+          <button class="wl-add" onclick="addToWhitelist()">+ Add</button>
+        </div>
+        <p id="wl-error" style="font-size:11px;color:#f87171;display:none;"></p>
+      </div>
+
+      <div class="glass section">
+        <p class="section-title">Whitelisted Sites <span id="wl-count" style="color:#475569;font-weight:400;font-size:10px;text-transform:none;">(0)</span></p>
+        <div id="wl-list"><p class="wl-empty">No sites whitelisted yet.</p></div>
+      </div>
+    </div>
+
+  </div><!-- /relative -->
+
+  <!-- Bottom nav -->
+  <nav>
+    <button class="nav-btn active" id="nav-dashboard" onclick="switchTab('dashboard')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      Home
+    </button>
+    <button class="nav-btn" id="nav-settings" onclick="switchTab('settings')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+      Settings
+    </button>
+    <button class="nav-btn" id="nav-whitelist" onclick="switchTab('whitelist')">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Whitelist
+    </button>
+  </nav>
+</div>
+
+<script>
+  // ── State ──
+  let enabled = true;
+  let sensitivity = 'balanced';
+  let whitelist = [];
+  let adsBlocked = 0;
+  let timeSaved = 0;
+  let saveTimer = null;
+
+  // ── Tab switching ──
+  function switchTab(tab) {
+    ['dashboard','settings','whitelist'].forEach(t => {
+      document.getElementById('panel-' + t).classList.toggle('active-panel', t === tab);
+      document.getElementById('nav-' + t).classList.toggle('active', t === tab);
+    });
+  }
+
+  // ── Toggle extension ──
+  function toggleExt() {
+    enabled = !enabled;
+    const btn = document.getElementById('toggle-btn');
+    const hero = document.getElementById('hero');
+    const label = document.getElementById('hero-label');
+    const title = document.getElementById('hero-title');
+    const dot = document.getElementById('status-dot');
+    const text = document.getElementById('status-text');
+
+    if (enabled) {
+      btn.className = 'toggle-btn on';
+      btn.textContent = '🔊';
+      hero.classList.add('glow-blue');
+      label.textContent = 'Protection Active';
+      title.className = 'hero-title text-gradient';
+      dot.className = 'dot active';
+      text.textContent = 'Monitoring all tabs for ads…';
+    } else {
+      btn.className = 'toggle-btn off';
+      btn.textContent = '🔇';
+      hero.classList.remove('glow-blue');
+      label.textContent = 'Paused';
+      title.className = 'hero-title';
+      title.style.color = '#475569';
+      dot.className = 'dot inactive';
+      text.textContent = 'Extension is paused. Click the button to activate.';
+    }
+  }
+
+  // ── Sensitivity ──
+  function setSens(val) {
+    sensitivity = val;
+    ['conservative','balanced','aggressive'].forEach(s => {
+      document.getElementById('sens-' + s).classList.toggle('selected', s === val);
+    });
+    showSaved();
+  }
+
+  // ── Save feedback ──
+  function showSaved() {
+    const msg = document.getElementById('save-msg');
+    msg.style.display = 'block';
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { msg.style.display = 'none'; }, 1500);
+  }
+
+  // ── Whitelist ──
+  function addToWhitelist() {
+    const input = document.getElementById('wl-input');
+    const err = document.getElementById('wl-error');
+    const domain = input.value.trim().toLowerCase().replace(/^www\./, '');
+
+    if (!domain) return;
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain)) {
+      err.textContent = 'Enter a valid domain (e.g. example.com)';
+      err.style.display = 'block';
+      return;
+    }
+    if (whitelist.includes(domain)) {
+      err.textContent = 'Already in whitelist';
+      err.style.display = 'block';
+      return;
+    }
+    err.style.display = 'none';
+    whitelist.push(domain);
+    input.value = '';
+    renderWhitelist();
+  }
+
+  function removeFromWhitelist(domain) {
+    whitelist = whitelist.filter(d => d !== domain);
+    renderWhitelist();
+  }
+
+  function renderWhitelist() {
+    const list = document.getElementById('wl-list');
+    const count = document.getElementById('wl-count');
+    count.textContent = '(' + whitelist.length + ')';
+    if (whitelist.length === 0) {
+      list.innerHTML = '<p class="wl-empty">No sites whitelisted yet.</p>';
+      return;
+    }
+    list.innerHTML = whitelist.map(d => `
+      <div class="wl-item">
+        <span class="wl-domain">${d}</span>
+        <button class="wl-rm" onclick="removeFromWhitelist('${d}')" aria-label="Remove ${d}">×</button>
+      </div>
+    `).join('');
+  }
+
+  // Allow Enter key in whitelist input
+  document.getElementById('wl-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addToWhitelist();
+  });
+
+  // Simulate a growing counter for demo effect
+  let demoTimer = setInterval(() => {
+    if (!enabled) return;
+    const r = Math.random();
+    if (r > 0.7) {
+      adsBlocked++;
+      timeSaved += Math.floor(Math.random() * 15) + 5;
+      document.getElementById('stat-count').textContent = adsBlocked;
+      const s = timeSaved;
+      document.getElementById('stat-time').textContent = s < 60 ? s + 's' : Math.floor(s/60) + 'm ' + (s%60) + 's';
+    }
+  }, 3000);
+</script>
+</body>
+</html>
