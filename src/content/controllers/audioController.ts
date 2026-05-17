@@ -28,7 +28,7 @@ function injectToastStyles(): void {
     #automute-toast {
       position: fixed;
       bottom: 24px;
-      right: 24px;
+      left: 50%;
       z-index: 2147483647;
       display: flex;
       align-items: center;
@@ -46,12 +46,12 @@ function injectToastStyles(): void {
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
       pointer-events: none;
       opacity: 0;
-      transform: translateY(12px);
+      transform: translate(-50%, 12px);
       transition: opacity 0.18s ease, transform 0.18s ease;
     }
     #automute-toast.automute-visible {
       opacity: 1;
-      transform: translateY(0);
+      transform: translate(-50%, 0);
     }
     #automute-toast .automute-icon {
       font-size: 18px;
@@ -80,11 +80,11 @@ function showToast(icon: string, text: string): void {
   // Show
   toastEl.classList.add('automute-visible');
 
-  // Auto-hide after 500ms
+  // Auto-hide after 2000ms
   if (toastHideTimer) clearTimeout(toastHideTimer);
   toastHideTimer = setTimeout(() => {
     toastEl?.classList.remove('automute-visible');
-  }, 1000);
+  }, 2000);
 }
 
 // ─── Direct DOM audio control ─────────────────────────────────────────────────
