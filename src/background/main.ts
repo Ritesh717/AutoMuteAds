@@ -17,8 +17,12 @@ import {
 import {
   loadSettings,
   saveSettings,
-  incrementMutedAds,
 } from '../shared/services/storageService';
+import {
+  getStats,
+  incrementStats,
+} from '../shared/services/statsService';
+
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -98,11 +102,10 @@ chrome.runtime.onMessage.addListener(
             const duration = statPayload?.durationSeconds ?? 0;
             console.log(`[AutoMuteAds BG] Ad ended on tab ${tabId}, duration: ${duration}s`);
             await setTabMuted(tabId, false);
-            if (duration > 0) {
-              await incrementMutedAds(duration).catch((err) => {
-                console.warn('[AutoMuteAds BG] incrementMutedAds failed:', err);
-              });
-            }
+            // Always increment count; add time only when duration is known (#stats)
+            await incrementStats(Math.max(0, duration)).catch((err) => {
+              console.warn('[AutoMuteAds BG] incrementStats failed:', err);
+            });
             break;
           }
 
@@ -147,10 +150,12 @@ chrome.runtime.onMessage.addListener(
           }
 
           case 'GET_STATUS': {
+            const stats = await getStats();
             sendResponse({
               isMuted:        tabId ? (mutedTabs.get(tabId) ?? false) : false,
               settings,
-              activePlatform: tabId ? (platformByTab.get(tabId) ?? null) : null, // #6
+              activePlatform: tabId ? (platformByTab.get(tabId) ?? null) : null,
+              stats, // live stats from local storage
             });
             break;
           }

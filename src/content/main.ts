@@ -176,9 +176,6 @@ function startDetection(): void {
   // Fix #5: 500ms interval for faster ad detection
   scanInterval = setInterval(() => runDetection(), 500);
   mutationObserver = createMutationDetector((confidence) => runDetection(confidence));
-
-  // Report platform to background for popup display (#6)
-  safeSendToBackground({ type: 'AD_DETECTED', payload: { platform: activePlatform.name, signals: [], confidence: 0 } });
 }
 
 function stopDetection(): void {

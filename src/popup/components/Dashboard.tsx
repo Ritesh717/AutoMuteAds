@@ -57,8 +57,9 @@ function formatTimeSaved(seconds: number): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Dashboard: React.FC = () => {
-  const { settings, isMuted, activePlatform, toggleExtension, manualMuteToggle } = usePopupStore();
-  const { enabled, mutedAdsCount, timeSavedSeconds } = settings;
+  const { settings, isMuted, activePlatform, stats, toggleExtension, manualMuteToggle } = usePopupStore();
+  const { enabled } = settings;
+  const { mutedAdsCount, timeSavedSeconds } = stats;
 
   const platformIcon = activePlatform ? (PLATFORM_ICONS[activePlatform] ?? '🌐') : null;
 

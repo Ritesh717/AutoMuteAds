@@ -3,7 +3,7 @@ import { defineManifest } from '@crxjs/vite-plugin';
 export default defineManifest({
   manifest_version: 3,
   name: 'AutoMuteAds',
-  version: '1.0.0',
+  version: '1.0.2',
   description: 'Automatically mutes browser audio during ads and restores sound when content resumes.',
   icons: {
     '16': 'icons/icon16.png',
