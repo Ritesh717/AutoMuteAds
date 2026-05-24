@@ -11,6 +11,7 @@ interface PopupState {
   isMuted: boolean;
   isLoading: boolean;
   activeTab: 'dashboard' | 'settings' | 'whitelist';
+  activePlatform: string | null; // #6: real-time platform name
 
   // Actions
   loadFromBackground: () => Promise<void>;
@@ -19,21 +20,17 @@ interface PopupState {
   addToWhitelist: (domain: string) => Promise<void>;
   removeFromWhitelist: (domain: string) => Promise<void>;
   setActiveTab: (tab: PopupState['activeTab']) => void;
+  manualMuteToggle: () => Promise<void>; // #9
 }
 
 /**
  * Send a message to the background service worker with a timeout fallback.
- * Returns null if:
- *   - The SW is asleep (throws "Receiving end does not exist")
- *   - The SW closes the port without calling sendResponse (resolves undefined)
- *   - The 2s timeout fires first
  */
 async function sendMsg<T>(type: string, payload?: unknown, timeoutMs = 2000): Promise<T | null> {
   const result = await Promise.race([
     chrome.runtime.sendMessage({ type, payload }).catch(() => null),
     new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs)),
   ]);
-  // Chrome resolves with undefined when SW doesn't call sendResponse — normalise to null
   return (result ?? null) as T | null;
 }
 
@@ -42,14 +39,15 @@ export const usePopupStore = create<PopupState>((set, get) => ({
   isMuted: false,
   isLoading: true,
   activeTab: 'dashboard',
+  activePlatform: null,
 
   loadFromBackground: async () => {
-    const status = await sendMsg<{ isMuted: boolean; settings: ExtensionSettings }>('GET_STATUS');
-    // Always clear the spinner — fall back to defaults if SW unreachable
+    const status = await sendMsg<{ isMuted: boolean; settings: ExtensionSettings; activePlatform?: string }>('GET_STATUS');
     set({
-      settings: status?.settings ?? { ...DEFAULT_SETTINGS },
-      isMuted: status?.isMuted ?? false,
-      isLoading: false,
+      settings:       status?.settings ?? { ...DEFAULT_SETTINGS },
+      isMuted:        status?.isMuted ?? false,
+      activePlatform: status?.activePlatform ?? null,
+      isLoading:      false,
     });
   },
 
@@ -76,4 +74,11 @@ export const usePopupStore = create<PopupState>((set, get) => ({
   },
 
   setActiveTab: (tab) => set({ activeTab: tab }),
+
+  // #9: manual mute toggle from popup
+  manualMuteToggle: async () => {
+    const { isMuted } = get();
+    await sendMsg('MANUAL_MUTE_TOGGLE');
+    set({ isMuted: !isMuted }); // optimistic update
+  },
 }));

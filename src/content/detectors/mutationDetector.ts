@@ -1,6 +1,9 @@
 /**
  * MutationObserver-based ad detector.
  * Watches DOM changes to detect ad elements being inserted dynamically.
+ *
+ * Fix #10: Debounced callback prevents rapid consecutive triggers on
+ * large DOM updates (e.g. ad player injection batches).
  */
 
 import { detectAdsInDom } from './domDetector';
@@ -19,14 +22,37 @@ const AD_MUTATION_PATTERNS = [
   /ad-banner/i,
 ];
 
+// Debounce delay: collapse rapid mutation bursts into a single callback (#10)
+const DEBOUNCE_MS = 250;
+
 /**
  * Create and start a MutationObserver that fires `callback` whenever
  * DOM changes suggest an ad is playing.
+ * The callback is debounced to avoid redundant work on large DOM batches.
  */
 export function createMutationDetector(callback: MutationCallback): MutationObserver {
+  let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+  let pendingSignals: string[] = [];
+
+  // Flush the debounce — runs the full DOM check once after burst settles (#10)
+  function flush(): void {
+    debounceTimer = null;
+    if (pendingSignals.length === 0) return;
+
+    try {
+      const domResult = detectAdsInDom();
+      const mutationBonus = Math.min(10, pendingSignals.length * 5);
+      const allSignals = [...domResult.matchedSelectors, ...pendingSignals];
+      callback(domResult.confidence + mutationBonus, allSignals);
+    } catch (err) {
+      console.warn('[AutoMuteAds][Mutation] flush error:', err);
+    } finally {
+      pendingSignals = [];
+    }
+  }
+
   const observer = new MutationObserver((mutations) => {
     let adSignalDetected = false;
-    const signals: string[] = [];
 
     for (const mutation of mutations) {
       if (mutation.type === 'childList') {
@@ -34,11 +60,10 @@ export function createMutationDetector(callback: MutationCallback): MutationObse
           if (node.nodeType === Node.ELEMENT_NODE) {
             const element = node as Element;
             const descriptor = `${element.className} ${element.id}`;
-
             for (const pattern of AD_MUTATION_PATTERNS) {
               if (pattern.test(descriptor)) {
                 adSignalDetected = true;
-                signals.push(`mutation:${descriptor.trim().slice(0, 40)}`);
+                pendingSignals.push(`mutation:${descriptor.trim().slice(0, 40)}`);
                 break;
               }
             }
@@ -52,7 +77,7 @@ export function createMutationDetector(callback: MutationCallback): MutationObse
         for (const pattern of AD_MUTATION_PATTERNS) {
           if (pattern.test(descriptor)) {
             adSignalDetected = true;
-            signals.push(`attr-mutation:${descriptor.trim().slice(0, 40)}`);
+            pendingSignals.push(`attr-mutation:${descriptor.trim().slice(0, 40)}`);
             break;
           }
         }
@@ -60,14 +85,9 @@ export function createMutationDetector(callback: MutationCallback): MutationObse
     }
 
     if (adSignalDetected) {
-      // Re-run full DOM check for accurate confidence
-      const domResult = detectAdsInDom();
-      // Mutation adds up to 10 bonus confidence
-      const mutationBonus = Math.min(10, signals.length * 5);
-      callback(domResult.confidence + mutationBonus, [
-        ...domResult.matchedSelectors,
-        ...signals,
-      ]);
+      // Debounce: reset the timer on each new mutation (#10)
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(flush, DEBOUNCE_MS);
     }
   });
 

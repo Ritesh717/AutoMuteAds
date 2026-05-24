@@ -34,12 +34,14 @@ export default defineManifest({
         '*://*.primevideo.com/*',
         '*://*.amazon.com/*',
         '*://*.twitch.tv/*',
+        '*://*.netflix.com/*',
+        '*://*.disneyplus.com/*',
       ],
       js: ['src/content/main.ts'],
       run_at: 'document_idle',
     },
   ],
-  permissions: ['storage', 'tabs', 'scripting', 'activeTab'],
+  permissions: ['storage', 'activeTab'],
   host_permissions: [
     '*://*.youtube.com/*',
     '*://*.hotstar.com/*',
@@ -48,6 +50,8 @@ export default defineManifest({
     '*://*.primevideo.com/*',
     '*://*.amazon.com/*',
     '*://*.twitch.tv/*',
+    '*://*.netflix.com/*',
+    '*://*.disneyplus.com/*',
   ],
   commands: {
     'toggle-extension': {

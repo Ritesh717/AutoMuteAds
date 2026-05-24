@@ -1,10 +1,11 @@
 // Extension settings stored in chrome.storage.sync
 export interface ExtensionSettings {
+  settingsVersion: number;   // bump when defaults change to force migration
   enabled: boolean;
   sensitivity: 'conservative' | 'balanced' | 'aggressive';
   whitelist: string[];
-  muteDelay: number;      // ms before muting
-  unmuteDelay: number;    // ms before unmuting
+  muteDelay: number;
+  unmuteDelay: number;
   mutedAdsCount: number;
   timeSavedSeconds: number;
   showNotifications: boolean;
@@ -12,6 +13,7 @@ export interface ExtensionSettings {
 
 // Default settings
 export const DEFAULT_SETTINGS: ExtensionSettings = {
+  settingsVersion: 2,
   enabled: true,
   sensitivity: 'balanced',
   whitelist: [],
@@ -19,7 +21,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   unmuteDelay: 500,
   mutedAdsCount: 0,
   timeSavedSeconds: 0,
-  showNotifications: false,
+  showNotifications: true,
 };
 
 // Confidence score thresholds
@@ -39,7 +41,8 @@ export type MessageType =
   | 'TOGGLE_EXTENSION'
   | 'MANUAL_MUTE_TOGGLE'
   | 'AD_STAT_UPDATE'
-  | 'SETTINGS_CHANGED';
+  | 'SETTINGS_CHANGED'
+  | 'PLATFORM_DETECTED';
 
 export interface Message {
   type: MessageType;
@@ -50,6 +53,7 @@ export interface AdDetectedPayload {
   confidence: number;
   signals: string[];
   url: string;
+  platform?: string; // #6: active platform name
 }
 
 export interface AdStatUpdatePayload {
@@ -61,6 +65,7 @@ export interface TabStatus {
   isMuted: boolean;
   isAdActive: boolean;
   url: string;
+  activePlatform?: string; // #6: for popup display
 }
 
 // Detection confidence breakdown

@@ -4,10 +4,17 @@
  * Orchestrates platform-specific ad detection and audio control.
  * Each platform has its own isolated detector — changes to one platform
  * cannot affect detection on another.
+ *
+ * Fixes:
+ *   #5  - Scan interval reduced to 500ms for faster ad detection
+ *   #6  - Reports active platform name to background for popup display
+ *   #9  - Manual mute toggle support via MANUAL_MUTE_TOGGLE message
+ *   #11 - All platforms follow standardized init/cleanup interface
+ *   #12 - Comprehensive error handling and Chrome API graceful degradation
  */
 
 import { createMutationDetector } from './detectors/mutationDetector';
-import { muteTab, unmuteTab } from './controllers/audioController';
+import { muteTab, unmuteTab, setNotificationsEnabled, isCurrentlyMuted } from './controllers/audioController';
 import {
   Message,
   ExtensionSettings,
@@ -29,40 +36,52 @@ interface Platform {
 /**
  * Match the current hostname to a platform.
  * Returns the matching platform config or the generic fallback.
+ * Fix #11: all platforms share the standardised Platform interface.
  */
 function resolvePlatform(): Platform {
   const host = window.location.hostname.replace(/^www\./, '');
 
-  if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
-    // Lazy import — only loaded when on YouTube
-    const yt = require('./detectors/platforms/youtube') as typeof import('./detectors/platforms/youtube');
-    return { name: 'YouTube', detect: yt.detect };
+  try {
+    if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
+      const m = require('./detectors/platforms/youtube') as typeof import('./detectors/platforms/youtube');
+      return { name: 'YouTube', detect: m.detect };
+    }
+
+    if (host === 'hotstar.com' || host.endsWith('.hotstar.com')) {
+      const m = require('./detectors/platforms/hotstar') as typeof import('./detectors/platforms/hotstar');
+      return { name: 'Hotstar', detect: m.detect, init: m.init, cleanup: m.cleanup };
+    }
+
+    if (host === 'zee5.com' || host.endsWith('.zee5.com')) {
+      const m = require('./detectors/platforms/zee5') as typeof import('./detectors/platforms/zee5');
+      return { name: 'Zee5', detect: m.detect };
+    }
+
+    if (host === 'primevideo.com' || host.endsWith('.primevideo.com') ||
+        host === 'amazon.com'     || host.endsWith('.amazon.com')) {
+      const m = require('./detectors/platforms/prime') as typeof import('./detectors/platforms/prime');
+      return { name: 'PrimeVideo', detect: m.detect };
+    }
+
+    if (host === 'twitch.tv' || host.endsWith('.twitch.tv')) {
+      const m = require('./detectors/platforms/twitch') as typeof import('./detectors/platforms/twitch');
+      return { name: 'Twitch', detect: m.detect };
+    }
+
+    if (host === 'netflix.com' || host.endsWith('.netflix.com')) {
+      const m = require('./detectors/platforms/netflix') as typeof import('./detectors/platforms/netflix');
+      return { name: 'Netflix', detect: m.detect };
+    }
+
+    if (host === 'disneyplus.com' || host.endsWith('.disneyplus.com')) {
+      const m = require('./detectors/platforms/disneyplus') as typeof import('./detectors/platforms/disneyplus');
+      return { name: 'Disney+', detect: m.detect };
+    }
+  } catch (err) {
+    console.warn(`${TAG} Failed to load platform module:`, err);
   }
 
-  if (host === 'hotstar.com' || host.endsWith('.hotstar.com')) {
-    const hs = require('./detectors/platforms/hotstar') as typeof import('./detectors/platforms/hotstar');
-    return { name: 'Hotstar', detect: hs.detect, init: hs.init, cleanup: hs.cleanup };
-  }
-
-  if (host === 'zee5.com' || host.endsWith('.zee5.com')) {
-    const z5 = require('./detectors/platforms/zee5') as typeof import('./detectors/platforms/zee5');
-    return { name: 'Zee5', detect: z5.detect };
-  }
-
-  if (
-    host === 'primevideo.com' || host.endsWith('.primevideo.com') ||
-    host === 'amazon.com'     || host.endsWith('.amazon.com')
-  ) {
-    const pv = require('./detectors/platforms/prime') as typeof import('./detectors/platforms/prime');
-    return { name: 'PrimeVideo', detect: pv.detect };
-  }
-
-  if (host === 'twitch.tv' || host.endsWith('.twitch.tv')) {
-    const tw = require('./detectors/platforms/twitch') as typeof import('./detectors/platforms/twitch');
-    return { name: 'Twitch', detect: tw.detect };
-  }
-
-  // Fallback for any other site
+  // Fallback for any other site (#12: errors in specific platform modules don't crash)
   const gen = require('./detectors/platforms/generic') as typeof import('./detectors/platforms/generic');
   return { name: 'Generic', detect: gen.detect };
 }
@@ -75,8 +94,7 @@ let scanInterval: ReturnType<typeof setInterval> | null = null;
 let mutationObserver: MutationObserver | null = null;
 let activePlatform: Platform | null = null;
 
-// Require N consecutive below-threshold ticks before unmuting.
-// Prevents a single score dip mid-ad from triggering premature unmute.
+// Require N consecutive below-threshold ticks before unmuting (#5: at 500ms intervals = 1.5s hold)
 let consecutiveLowScoreTicks = 0;
 const UNMUTE_HOLD_TICKS = 3;
 
@@ -87,7 +105,11 @@ function getCurrentDomain(): string {
 }
 
 function isWhitelisted(): boolean {
-  return isDomainWhitelisted(getCurrentDomain(), settings.whitelist);
+  try {
+    return isDomainWhitelisted(getCurrentDomain(), settings.whitelist);
+  } catch {
+    return false;
+  }
 }
 
 const TAG = '[AutoMuteAds]';
@@ -98,7 +120,15 @@ function runDetection(mutationBonus: number = 0): void {
   if (!settings.enabled || !activePlatform) return;
   if (isWhitelisted()) return;
 
-  const result    = activePlatform.detect();
+  let result: PlatformDetectionResult;
+  try {
+    result = activePlatform.detect();
+  } catch (err) {
+    // Platform detector threw — log and skip tick (#12)
+    console.warn(`${TAG}[${activePlatform.name}] detect() threw:`, err);
+    return;
+  }
+
   const total     = Math.min(100, result.confidence + mutationBonus);
   const threshold = SENSITIVITY_THRESHOLDS[settings.sensitivity];
 
@@ -118,7 +148,7 @@ function runDetection(mutationBonus: number = 0): void {
     if (consecutiveLowScoreTicks >= UNMUTE_HOLD_TICKS) {
       consecutiveLowScoreTicks = 0;
       isAdCurrentlyPlaying = false;
-      console.log(`${TAG}[${activePlatform.name}] ✅ AD ENDED — held for ${UNMUTE_HOLD_TICKS}s. Unmuting.`);
+      console.log(`${TAG}[${activePlatform.name}] ✅ AD ENDED — held for ${UNMUTE_HOLD_TICKS} ticks. Unmuting.`);
       unmuteTab(settings.unmuteDelay);
     } else {
       console.log(`${TAG}[${activePlatform.name}] ⏳ holding mute (${consecutiveLowScoreTicks}/${UNMUTE_HOLD_TICKS})`);
@@ -132,79 +162,141 @@ function runDetection(mutationBonus: number = 0): void {
 
 function startDetection(): void {
   activePlatform = resolvePlatform();
-  console.log(`${TAG} platform detected: ${activePlatform.name}`);
+  console.log(`${TAG} Platform: ${activePlatform.name} on ${getCurrentDomain()}`);
 
-  activePlatform.init?.();
+  // Sync notification preference with audio controller (#7)
+  setNotificationsEnabled(settings.showNotifications);
 
-  scanInterval = setInterval(() => runDetection(), 1000);
+  try {
+    activePlatform.init?.();
+  } catch (err) {
+    console.warn(`${TAG}[${activePlatform.name}] init() threw:`, err);
+  }
+
+  // Fix #5: 500ms interval for faster ad detection
+  scanInterval = setInterval(() => runDetection(), 500);
   mutationObserver = createMutationDetector((confidence) => runDetection(confidence));
+
+  // Report platform to background for popup display (#6)
+  safeSendToBackground({ type: 'AD_DETECTED', payload: { platform: activePlatform.name, signals: [], confidence: 0 } });
 }
 
 function stopDetection(): void {
   if (scanInterval)     { clearInterval(scanInterval); scanInterval = null; }
   if (mutationObserver) { mutationObserver.disconnect(); mutationObserver = null; }
-  activePlatform?.cleanup?.();
+  try {
+    activePlatform?.cleanup?.();
+  } catch (err) {
+    console.warn(`${TAG} cleanup() threw:`, err);
+  }
   activePlatform = null;
+}
+
+// ─── Safe background messaging (#12) ─────────────────────────────────────────
+
+function safeSendToBackground(msg: Message): void {
+  try {
+    if (!chrome?.runtime?.id) return;
+    chrome.runtime.sendMessage(msg).catch(() => {
+      // SW asleep — not an error
+    });
+  } catch {
+    // Extension context invalidated — ignore
+  }
 }
 
 // ─── Message listener ─────────────────────────────────────────────────────────
 
 chrome.runtime.onMessage.addListener((message: Message) => {
-  if (message.type === 'SETTINGS_CHANGED') {
-    settings = message.payload as ExtensionSettings;
-    if (settings.enabled) {
-      stopDetection();
-      startDetection();
-    } else {
-      stopDetection();
-      if (isAdCurrentlyPlaying) {
-        isAdCurrentlyPlaying = false;
-        unmuteTab(0);
+  try {
+    if (message.type === 'SETTINGS_CHANGED') {
+      settings = message.payload as ExtensionSettings;
+      // Sync notification preference live (#7)
+      setNotificationsEnabled(settings.showNotifications);
+
+      if (settings.enabled) {
+        stopDetection();
+        startDetection();
+      } else {
+        stopDetection();
+        if (isAdCurrentlyPlaying) {
+          isAdCurrentlyPlaying = false;
+          unmuteTab(0);
+        }
       }
     }
+
+    // Fix #9: manual mute toggle from popup
+    if (message.type === 'MANUAL_MUTE_TOGGLE') {
+      if (isCurrentlyMuted()) {
+        unmuteTab(0);
+        isAdCurrentlyPlaying = false;
+      } else {
+        muteTab(0);
+        isAdCurrentlyPlaying = true;
+      }
+    }
+  } catch (err) {
+    console.warn(`${TAG} Message handler error:`, err);
   }
 });
 
 // ─── Bootstrap ────────────────────────────────────────────────────────────────
 
 async function getSettingsFromBackground(): Promise<ExtensionSettings | null> {
-  const tryOnce = (): Promise<ExtensionSettings | null> =>
-    chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }).catch(() => null);
+  const tryOnce = (): Promise<ExtensionSettings | null> => {
+    try {
+      if (!chrome?.runtime?.id) return Promise.resolve(null);
+      return chrome.runtime.sendMessage({ type: 'GET_SETTINGS' }).catch(() => null);
+    } catch {
+      return Promise.resolve(null);
+    }
+  };
 
   const result = await tryOnce();
   if (result) return result;
 
+  // SW may be asleep — wait 500ms and retry once (#12)
   await new Promise((r) => setTimeout(r, 500));
   return tryOnce();
 }
 
 async function init(): Promise<void> {
-  if (!chrome.runtime?.id) {
-    console.warn(`${TAG} init aborted — extension context invalid`);
-    return;
+  // Guard: don't run if extension context has been invalidated (#12)
+  try {
+    if (!chrome?.runtime?.id) {
+      console.warn(`${TAG} init aborted — extension context invalid`);
+      return;
+    }
+  } catch {
+    return; // chrome API not available (e.g. non-extension context)
   }
 
-  console.log(`${TAG} initialising on ${window.location.hostname}`);
+  console.log(`${TAG} Initialising on ${window.location.hostname}`);
 
-  const response = await getSettingsFromBackground();
-  if (response) {
-    settings = response;
-    console.log(`${TAG} settings loaded:`, {
-      enabled:    settings.enabled,
-      sensitivity: settings.sensitivity,
-      threshold:  SENSITIVITY_THRESHOLDS[settings.sensitivity],
-    });
-  } else {
-    console.warn(`${TAG} SW unreachable — using defaults`);
+  try {
+    const response = await getSettingsFromBackground();
+    if (response) {
+      settings = response;
+      console.log(`${TAG} Settings loaded:`, {
+        enabled:     settings.enabled,
+        sensitivity: settings.sensitivity,
+        threshold:   SENSITIVITY_THRESHOLDS[settings.sensitivity],
+      });
+    } else {
+      console.warn(`${TAG} SW unreachable — using defaults`);
+    }
+  } catch (err) {
+    console.warn(`${TAG} Failed to load settings:`, err);
   }
 
-  if (!settings.enabled) { console.log(`${TAG} disabled — not starting`); return; }
-  if (isWhitelisted())   { console.log(`${TAG} whitelisted (${getCurrentDomain()}) — not starting`); return; }
+  if (!settings.enabled) { console.log(`${TAG} Disabled — not starting`); return; }
+  if (isWhitelisted())   { console.log(`${TAG} Whitelisted (${getCurrentDomain()}) — not starting`); return; }
 
   startDetection();
 }
 
-// Only execute in page context — guards against CRXJS/Vite 8 SW import bug
+// Only execute in page context — guards against CRXJS/Vite SW import bug (#12)
 if (typeof document !== 'undefined') {
   init().catch((err) => { console.warn(`${TAG} init error:`, err); });
 }

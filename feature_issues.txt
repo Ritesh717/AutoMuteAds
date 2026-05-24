@@ -1,0 +1,75 @@
+AutoMuteAds Feature-Specific Issues
+
+Audio Control Issues
+====================
+
+1. Incomplete Audio Element Handling (src/content/controllers/audioController.ts)
+   - The implementation only handles <video> and <audio> elements but doesn't account for other media elements or Web Audio API usage
+   - Missing proper restoration of original volume levels in some edge cases
+   - No handling of dynamically added media elements after initial mute
+
+2. Tab-level Muting Reliability (src/background/main.ts)
+   - The tab muting feature relies on chrome.tabs.update() which may not work consistently across all browsers/versions
+   - No fallback mechanism if tab-level muting fails
+
+Detection Issues
+================
+
+3. Platform Detection Gaps (src/content/main.ts)
+   - Limited platform support (YouTube, Hotstar, Zee5, Prime, Twitch) with no easy extensibility
+   - No detection for popular platforms like Netflix, Hulu, Disney+, etc.
+
+4. False Positive/Negative Detection (src/content/detectors/domDetector.ts)
+   - Aggressive selector patterns might cause false positives on non-ad elements
+   - Confidence scoring system could be improved with machine learning or more sophisticated heuristics
+   - No handling of dynamically loaded ads that don't trigger DOM mutations
+
+5. Timing Issues (src/content/main.ts)
+   - Fixed 1-second detection interval might be too slow for fast-changing ads or too frequent for performance
+   - No adaptive timing based on platform or content type
+
+UI/UX Issues
+============
+
+6. Popup UI Limitations (src/popup/*)
+   - Missing real-time status updates in the popup
+   - No visualization of detection confidence or active platforms
+   - Whitelist management could be more user-friendly
+
+7. Notification System (src/content/controllers/audioController.ts)
+   - Toast notifications are basic and not customizable
+   - No persistent notification option for important events
+
+Configuration Issues
+====================
+
+8. Limited Sensitivity Options (src/types/index.ts)
+   - Only three sensitivity levels (conservative, balanced, aggressive) with fixed thresholds
+   - No per-platform sensitivity settings
+   - No custom selector support for advanced users
+
+9. Missing Features (CLAUDE.md vs implementation)
+   - No manual mute override implementation
+   - No website whitelisting UI in popup (though backend exists)
+   - No dashboard statistics display for muted ads count and time saved
+
+Performance Issues
+==================
+
+10. Resource Usage (src/content/main.ts)
+    - Continuous DOM querying every second could impact performance on lower-end devices
+    - No throttling or debouncing for mutation observers
+    - Memory leaks possible with unterminated intervals/observers
+
+Architecture Issues
+===================
+
+11. Code Organization (src/content/detectors/platforms/*)
+    - Platform-specific detectors are inconsistent in implementation
+    - No standardized interface for new platform additions
+    - Some platforms missing proper initialization/cleanup functions
+
+12. Error Handling (Throughout codebase)
+    - Limited error handling and recovery mechanisms
+    - No logging or telemetry for debugging user issues
+    - No graceful degradation when Chrome APIs are unavailable

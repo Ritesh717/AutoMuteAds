@@ -7,12 +7,24 @@ const STORAGE_KEY = 'automuteads_settings';
 
 /**
  * Load settings from chrome.storage.sync with fallback to defaults.
+ * Applies migrations when the stored settingsVersion is older than current.
  */
 export async function loadSettings(): Promise<ExtensionSettings> {
   return new Promise((resolve) => {
     chrome.storage.sync.get(STORAGE_KEY, (result) => {
       const stored = result[STORAGE_KEY] as Partial<ExtensionSettings> | undefined;
-      resolve({ ...DEFAULT_SETTINGS, ...stored });
+      const merged: ExtensionSettings = { ...DEFAULT_SETTINGS, ...stored };
+
+      // ── Migration v1 → v2 ──────────────────────────────────────────────────
+      // v1 stored showNotifications:false as the default — reset it to true
+      if (!stored?.settingsVersion || stored.settingsVersion < 2) {
+        merged.settingsVersion = 2;
+        merged.showNotifications = true;
+        // Persist the migration so it only runs once
+        chrome.storage.sync.set({ [STORAGE_KEY]: merged });
+      }
+
+      resolve(merged);
     });
   });
 }

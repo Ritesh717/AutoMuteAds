@@ -1,7 +1,7 @@
 import React from 'react';
 import { usePopupStore } from '../store/popupStore';
 
-// ─── Icons (inline SVG for zero-dependency) ───────────────────────────────────
+// ─── Icons ────────────────────────────────────────────────────────────────────
 
 const VolumeOffIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -32,6 +32,18 @@ const ClockIcon = () => (
   </svg>
 );
 
+// Platform emoji map (#6)
+const PLATFORM_ICONS: Record<string, string> = {
+  YouTube:    '▶️',
+  Hotstar:    '🎬',
+  Zee5:       '🎥',
+  PrimeVideo: '📦',
+  Twitch:     '🎮',
+  Netflix:    '🎞️',
+  'Disney+':  '✨',
+  Generic:    '🌐',
+};
+
 // ─── Format helpers ───────────────────────────────────────────────────────────
 
 function formatTimeSaved(seconds: number): string {
@@ -45,11 +57,13 @@ function formatTimeSaved(seconds: number): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Dashboard: React.FC = () => {
-  const { settings, isMuted, toggleExtension } = usePopupStore();
+  const { settings, isMuted, activePlatform, toggleExtension, manualMuteToggle } = usePopupStore();
   const { enabled, mutedAdsCount, timeSavedSeconds } = settings;
 
+  const platformIcon = activePlatform ? (PLATFORM_ICONS[activePlatform] ?? '🌐') : null;
+
   return (
-    <div className="p-5 space-y-5">
+    <div className="p-5 space-y-4">
 
       {/* Hero status */}
       <div className={`glass rounded-2xl p-5 flex items-center justify-between transition-all duration-500 ${enabled ? 'glow-blue border-blue-500/20' : 'border-slate-700/30'}`}>
@@ -79,11 +93,7 @@ const Dashboard: React.FC = () => {
             }`}
           aria-label="Toggle extension"
         >
-          {enabled ? (
-            <VolumeIcon />
-          ) : (
-            <VolumeOffIcon />
-          )}
+          {enabled ? <VolumeIcon /> : <VolumeOffIcon />}
         </button>
       </div>
 
@@ -92,7 +102,7 @@ const Dashboard: React.FC = () => {
         <div className="glass rounded-xl p-4 space-y-1">
           <div className="flex items-center gap-1.5 text-slate-400">
             <ShieldIcon />
-            <span className="text-xs font-medium uppercase tracking-wider">Ads Blocked</span>
+            <span className="text-xs font-medium uppercase tracking-wider">Ads Muted</span>
           </div>
           <p className="text-3xl font-bold text-white">{mutedAdsCount}</p>
           <p className="text-xs text-slate-500">all-time</p>
@@ -108,14 +118,44 @@ const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Status pill */}
-      <div className={`glass rounded-xl px-4 py-3 flex items-center gap-3`}>
-        <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${enabled ? 'bg-emerald-400' : 'bg-slate-600'}`} />
-        <p className="text-sm text-slate-300">
-          {enabled
-            ? 'Monitoring all tabs for ads…'
-            : 'Extension is paused. Click the button to activate.'}
-        </p>
+      {/* Active platform pill (#6) */}
+      {activePlatform && (
+        <div className="glass rounded-xl px-4 py-2.5 flex items-center gap-2">
+          <span className="text-base">{platformIcon}</span>
+          <div>
+            <p className="text-xs text-slate-400 uppercase tracking-wider font-medium">Active Platform</p>
+            <p className="text-sm text-white font-semibold">{activePlatform}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Status + manual mute row (#9) */}
+      <div className="flex items-center gap-3">
+        <div className="glass rounded-xl px-4 py-3 flex items-center gap-3 flex-1">
+          <span className={`w-2.5 h-2.5 rounded-full animate-pulse ${enabled ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+          <p className="text-sm text-slate-300">
+            {enabled ? 'Monitoring for ads…' : 'Extension paused.'}
+          </p>
+        </div>
+
+        {/* Manual mute toggle button (#9) */}
+        {enabled && (
+          <button
+            id="manual-mute-btn"
+            onClick={manualMuteToggle}
+            title={isMuted ? 'Unmute now' : 'Mute now'}
+            className={`glass rounded-xl px-3 py-3 flex items-center justify-center transition-all duration-200 cursor-pointer
+              ${isMuted
+                ? 'text-amber-400 border border-amber-400/30 hover:bg-amber-400/10'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+          >
+            {isMuted
+              ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
+              : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M15.54 8.46a5 5 0 0 1 0 7.07" /></svg>
+            }
+          </button>
+        )}
       </div>
 
     </div>
