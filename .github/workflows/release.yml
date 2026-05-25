@@ -34,7 +34,7 @@ jobs:
           cd ..
 
       - name: Upload and Publish to Chrome Web Store
-        uses: fregante/chrome-webstore-upload-action@v2
+        uses: fregante/chrome-webstore-upload@v2
         with:
           file-path: automute-ads-release.zip
           extension-id: ${{ secrets.EXTENSION_ID }}
