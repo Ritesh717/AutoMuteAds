@@ -66,3 +66,17 @@ jobs:
         run: |
           git tag "v${{ steps.bump-version.outputs.version }}"
           git push origin "v${{ steps.bump-version.outputs.version }}"
+
+      - name: Create Job Summary
+        run: |
+          echo "## 🏷️ New Release Tag Generated" >> $GITHUB_STEP_SUMMARY
+          echo "A new version has been successfully created and tagged!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **New Version Tag** | \`v${{ steps.bump-version.outputs.version }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Bump Type** | \`${{ steps.bump-type.outputs.type }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit Message** | \`${{ github.event.head_commit.message }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "This tag has automatically triggered the **Build and Publish** workflow to compile and upload version \`v${{ steps.bump-version.outputs.version }}\` to the Chrome Web Store." >> $GITHUB_STEP_SUMMARY
+

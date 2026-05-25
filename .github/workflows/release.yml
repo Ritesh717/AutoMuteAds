@@ -61,3 +61,15 @@ jobs:
           client-secret: ${{ secrets.CLIENT_SECRET }}
           refresh-token: ${{ secrets.REFRESH_TOKEN }}
           publish: true
+
+      - name: Create Publish Summary
+        run: |
+          echo "## 🚀 Chrome Web Store Publish Status" >> $GITHUB_STEP_SUMMARY
+          echo "The extension has been successfully built and pushed!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Published Version** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | Approved & Uploaded |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit Message** | \`${{ github.event.head_commit.message }}\` |" >> $GITHUB_STEP_SUMMARY
+
