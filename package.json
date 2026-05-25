@@ -1,6 +1,6 @@
 {
   "name": "automuteads",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "Chrome extension that automatically mutes ads during video streaming",
   "scripts": {
