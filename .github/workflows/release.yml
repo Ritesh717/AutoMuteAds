@@ -53,14 +53,12 @@ jobs:
           name: extension-release-zip
 
       - name: Upload and Publish to Chrome Web Store
-        uses: fregante/chrome-webstore-upload@v2.2.0
-        with:
-          file-path: automute-ads-release.zip
-          extension-id: ${{ secrets.EXTENSION_ID }}
-          client-id: ${{ secrets.CLIENT_ID }}
-          client-secret: ${{ secrets.CLIENT_SECRET }}
-          refresh-token: ${{ secrets.REFRESH_TOKEN }}
-          publish: true
+        run: |
+          npx -y chrome-webstore-upload-cli --source automute-ads-release.zip --extension-id "${{ secrets.EXTENSION_ID }}"
+        env:
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.CLIENT_SECRET }}
+          REFRESH_TOKEN: ${{ secrets.REFRESH_TOKEN }}
 
       - name: Create Publish Summary
         run: |
