@@ -48,6 +48,11 @@ jobs:
         run: |
           npm version ${{ steps.bump-type.outputs.type }} --no-git-tag-version
           NEW_VERSION=$(node -p "require('./package.json').version")
+          while git rev-parse "v$NEW_VERSION" >/dev/null 2>&1 || git ls-remote --tags origin "refs/tags/v$NEW_VERSION" | grep -q "refs/tags/v$NEW_VERSION"; do
+            echo "Tag v$NEW_VERSION already exists. Auto-incrementing version..."
+            npm version patch --no-git-tag-version
+            NEW_VERSION=$(node -p "require('./package.json').version")
+          done
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Commit and Push Version Bump
