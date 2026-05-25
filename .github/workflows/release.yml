@@ -53,6 +53,7 @@ jobs:
           name: extension-release-zip
 
       - name: Upload and Publish to Chrome Web Store
+        id: upload_step
         run: |
           npx -y chrome-webstore-upload-cli --source automute-ads-release.zip --extension-id "${{ secrets.EXTENSION_ID }}"
         env:
@@ -62,13 +63,20 @@ jobs:
           PUBLISHER_ID: ${{ secrets.PUBLISHER_ID }}
 
       - name: Create Publish Summary
+        if: always()
         run: |
           echo "## 🚀 Chrome Web Store Publish Status" >> $GITHUB_STEP_SUMMARY
-          echo "The extension has been successfully built and pushed!" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.upload_step.outcome }}" = "success" ]; then
+            echo "The extension has been successfully built and pushed!" >> $GITHUB_STEP_SUMMARY
+            STATUS="Approved & Uploaded"
+          else
+            echo "⚠️ The upload was attempted but Google returned an error (e.g. the extension is currently in review)." >> $GITHUB_STEP_SUMMARY
+            STATUS="Failed (Check Logs)"
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
           echo "| --- | --- |" >> $GITHUB_STEP_SUMMARY
           echo "| **Published Version** | \`${{ github.ref_name }}\` |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Status** | Approved & Uploaded |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Status** | $STATUS |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit Message** | \`${{ github.event.head_commit.message }}\` |" >> $GITHUB_STEP_SUMMARY
 
