@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-publish:
-    name: Build and Publish
+  build:
+    name: Build and Package
     runs-on: ubuntu-latest
 
     steps:
@@ -32,6 +32,25 @@ jobs:
           cd dist
           zip -r ../automute-ads-release.zip *
           cd ..
+
+      - name: Upload Packaged Zip as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-release-zip
+          path: automute-ads-release.zip
+          retention-days: 7
+
+  publish:
+    name: Publish to Web Store
+    needs: build
+    runs-on: ubuntu-latest
+    environment: Production  # Enforces manual approval in GitHub Settings > Environments
+
+    steps:
+      - name: Download Packaged Zip Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: extension-release-zip
 
       - name: Upload and Publish to Chrome Web Store
         uses: fregante/chrome-webstore-upload@v2
