@@ -24,6 +24,16 @@ import {
 import { isDomainWhitelisted } from '../shared/services/storageService';
 import type { PlatformDetectionResult } from './detectors/platforms/types';
 
+// Static imports for platform detectors
+import * as youtube from './detectors/platforms/youtube';
+import * as hotstar from './detectors/platforms/hotstar';
+import * as zee5 from './detectors/platforms/zee5';
+import * as prime from './detectors/platforms/prime';
+import * as twitch from './detectors/platforms/twitch';
+import * as netflix from './detectors/platforms/netflix';
+import * as disneyplus from './detectors/platforms/disneyplus';
+import * as generic from './detectors/platforms/generic';
+
 // ─── Platform registry ────────────────────────────────────────────────────────
 
 interface Platform {
@@ -41,49 +51,37 @@ interface Platform {
 function resolvePlatform(): Platform {
   const host = window.location.hostname.replace(/^www\./, '');
 
-  try {
-    if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
-      const m = require('./detectors/platforms/youtube') as typeof import('./detectors/platforms/youtube');
-      return { name: 'YouTube', detect: m.detect };
-    }
+  if (host === 'youtube.com' || host.endsWith('.youtube.com')) {
+    return { name: 'YouTube', detect: youtube.detect };
+  }
 
-    if (host === 'hotstar.com' || host.endsWith('.hotstar.com')) {
-      const m = require('./detectors/platforms/hotstar') as typeof import('./detectors/platforms/hotstar');
-      return { name: 'Hotstar', detect: m.detect, init: m.init, cleanup: m.cleanup };
-    }
+  if (host === 'hotstar.com' || host.endsWith('.hotstar.com')) {
+    return { name: 'Hotstar', detect: hotstar.detect, init: hotstar.init, cleanup: hotstar.cleanup };
+  }
 
-    if (host === 'zee5.com' || host.endsWith('.zee5.com')) {
-      const m = require('./detectors/platforms/zee5') as typeof import('./detectors/platforms/zee5');
-      return { name: 'Zee5', detect: m.detect };
-    }
+  if (host === 'zee5.com' || host.endsWith('.zee5.com')) {
+    return { name: 'Zee5', detect: zee5.detect };
+  }
 
-    if (host === 'primevideo.com' || host.endsWith('.primevideo.com') ||
-        host === 'amazon.com'     || host.endsWith('.amazon.com')) {
-      const m = require('./detectors/platforms/prime') as typeof import('./detectors/platforms/prime');
-      return { name: 'PrimeVideo', detect: m.detect };
-    }
+  if (host === 'primevideo.com' || host.endsWith('.primevideo.com') ||
+      host === 'amazon.com'     || host.endsWith('.amazon.com')) {
+    return { name: 'PrimeVideo', detect: prime.detect };
+  }
 
-    if (host === 'twitch.tv' || host.endsWith('.twitch.tv')) {
-      const m = require('./detectors/platforms/twitch') as typeof import('./detectors/platforms/twitch');
-      return { name: 'Twitch', detect: m.detect };
-    }
+  if (host === 'twitch.tv' || host.endsWith('.twitch.tv')) {
+    return { name: 'Twitch', detect: twitch.detect };
+  }
 
-    if (host === 'netflix.com' || host.endsWith('.netflix.com')) {
-      const m = require('./detectors/platforms/netflix') as typeof import('./detectors/platforms/netflix');
-      return { name: 'Netflix', detect: m.detect };
-    }
+  if (host === 'netflix.com' || host.endsWith('.netflix.com')) {
+    return { name: 'Netflix', detect: netflix.detect };
+  }
 
-    if (host === 'disneyplus.com' || host.endsWith('.disneyplus.com')) {
-      const m = require('./detectors/platforms/disneyplus') as typeof import('./detectors/platforms/disneyplus');
-      return { name: 'Disney+', detect: m.detect };
-    }
-  } catch (err) {
-    console.warn(`${TAG} Failed to load platform module:`, err);
+  if (host === 'disneyplus.com' || host.endsWith('.disneyplus.com')) {
+    return { name: 'Disney+', detect: disneyplus.detect };
   }
 
   // Fallback for any other site (#12: errors in specific platform modules don't crash)
-  const gen = require('./detectors/platforms/generic') as typeof import('./detectors/platforms/generic');
-  return { name: 'Generic', detect: gen.detect };
+  return { name: 'Generic', detect: generic.detect };
 }
 
 // ─── State ────────────────────────────────────────────────────────────────────
