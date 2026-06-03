@@ -18,10 +18,6 @@ import {
   loadSettings,
   saveSettings,
 } from '../shared/services/storageService';
-import {
-  getStats,
-  incrementStats,
-} from '../shared/services/statsService';
 
 
 // ─── State ────────────────────────────────────────────────────────────────────
@@ -116,10 +112,8 @@ chrome.runtime.onMessage.addListener(
             const duration = statPayload?.durationSeconds ?? 0;
             console.log(`[AutoMuteAds BG] Ad ended on tab ${tabId}, duration: ${duration}s`);
             await setTabMuted(tabId, false);
-            // Always increment count; add time only when duration is known (#stats)
-            await incrementStats(Math.max(0, duration)).catch((err) => {
-              console.warn('[AutoMuteAds BG] incrementStats failed:', err);
-            });
+            // NOTE: stat increment is handled by the content script directly via
+            // chrome.storage.local to ensure it fires even when the SW is asleep.
             break;
           }
 
@@ -164,12 +158,12 @@ chrome.runtime.onMessage.addListener(
           }
 
           case 'GET_STATUS': {
-            const stats = await getStats();
+            // Stats are read directly from chrome.storage.local by the popup (readLocalStats),
+            // so there is no need to fetch or return them here.
             sendResponse({
               isMuted:        tabId ? (mutedTabs.get(tabId) ?? false) : false,
               settings,
               activePlatform: tabId ? (platformByTab.get(tabId) ?? null) : null,
-              stats, // live stats from local storage
             });
             break;
           }

@@ -47,6 +47,12 @@ async function readLocalStats(): Promise<AdStats> {
   });
 }
 
+// Module-level listener references so they can be deregistered on each popup open,
+// preventing duplicate listeners from accumulating across popup open/close cycles.
+type StorageChanges = { [key: string]: chrome.storage.StorageChange };
+let _statsListener: ((changes: StorageChanges, area: string) => void) | null = null;
+let _settingsListener: ((changes: StorageChanges, area: string) => void) | null = null;
+
 export const usePopupStore = create<PopupState>((set, get) => ({
   settings: { ...DEFAULT_SETTINGS },
   isMuted: false,
@@ -56,6 +62,9 @@ export const usePopupStore = create<PopupState>((set, get) => ({
   stats: DEFAULT_STATS,
 
   loadFromBackground: async () => {
+    // Reset loading state so stale data isn't shown briefly on re-open
+    set({ isLoading: true });
+
     const [status, stats] = await Promise.all([
       sendMsg<{ isMuted: boolean; settings: ExtensionSettings; activePlatform?: string }>('GET_STATUS'),
       readLocalStats(),
@@ -68,13 +77,28 @@ export const usePopupStore = create<PopupState>((set, get) => ({
       isLoading:      false,
     });
 
-    // Listen to storage changes for live stat updates
-    chrome.storage.onChanged.addListener((changes, area) => {
+    // ── Fix: deregister old listeners before re-adding to prevent leaks ──────
+    if (_statsListener) chrome.storage.onChanged.removeListener(_statsListener);
+    if (_settingsListener) chrome.storage.onChanged.removeListener(_settingsListener);
+
+    // Live stat updates from local storage (written by background on AD_ENDED)
+    _statsListener = (changes, area) => {
       if (area === 'local' && changes['automuteads_stats']) {
         const newStats = changes['automuteads_stats'].newValue as AdStats;
         if (newStats) set({ stats: newStats });
       }
-    });
+    };
+
+    // Live settings updates from sync storage (e.g. toggled in another tab)
+    _settingsListener = (changes, area) => {
+      if (area === 'sync' && changes['automuteads_settings']) {
+        const newSettings = changes['automuteads_settings'].newValue as ExtensionSettings;
+        if (newSettings) set({ settings: newSettings });
+      }
+    };
+
+    chrome.storage.onChanged.addListener(_statsListener);
+    chrome.storage.onChanged.addListener(_settingsListener);
   },
 
   refreshStats: async () => {

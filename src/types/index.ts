@@ -6,9 +6,8 @@ export interface ExtensionSettings {
   whitelist: string[];
   muteDelay: number;
   unmuteDelay: number;
-  mutedAdsCount: number;
-  timeSavedSeconds: number;
   showNotifications: boolean;
+  // NOTE: stats (mutedAdsCount, timeSavedSeconds) live in AdStats (chrome.storage.local) via statsService
 }
 
 // Default settings
@@ -19,8 +18,6 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
   whitelist: [],
   muteDelay: 300,
   unmuteDelay: 500,
-  mutedAdsCount: 0,
-  timeSavedSeconds: 0,
   showNotifications: true,
 };
 

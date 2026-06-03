@@ -12,6 +12,7 @@
  */
 
 import { Message } from '../../types';
+import { incrementStats } from '../../shared/services/statsService';
 
 let muteTimer: ReturnType<typeof setTimeout> | null = null;
 let unmuteTimer: ReturnType<typeof setTimeout> | null = null;
@@ -264,6 +265,14 @@ export function unmuteTab(delay: number = 0): void {
     adStartTime = null;
     unmuteAllVideoElements();
     showToast('🔊', 'Audio restored');
+
+    // Write stats directly from content script — this fires chrome.storage.onChanged
+    // in the popup immediately, without depending on the background SW being awake.
+    incrementStats(durationSeconds).catch((err) =>
+      console.warn(`${TAG} incrementStats failed:`, err)
+    );
+
+    // Also notify background for tab-level mute cleanup (non-critical if SW is asleep)
     safeSend({ type: 'AD_ENDED', payload: { durationSeconds } });
   }, delay);
 }

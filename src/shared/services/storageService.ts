@@ -43,17 +43,6 @@ export async function saveSettings(settings: Partial<ExtensionSettings>): Promis
 }
 
 /**
- * Increment the global muted-ads counter and add time saved.
- */
-export async function incrementMutedAds(durationSeconds: number): Promise<void> {
-  const settings = await loadSettings();
-  await saveSettings({
-    mutedAdsCount: settings.mutedAdsCount + 1,
-    timeSavedSeconds: settings.timeSavedSeconds + durationSeconds,
-  });
-}
-
-/**
  * Add a domain to the whitelist.
  */
 export async function addToWhitelist(domain: string): Promise<void> {
