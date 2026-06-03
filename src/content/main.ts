@@ -162,6 +162,11 @@ function startDetection(): void {
   activePlatform = resolvePlatform();
   console.log(`${TAG} Platform: ${activePlatform.name} on ${getCurrentDomain()}`);
 
+  safeSendToBackground({
+    type: 'PLATFORM_DETECTED',
+    payload: { platform: activePlatform.name }
+  });
+
   // Sync notification preference with audio controller (#7)
   setNotificationsEnabled(settings.showNotifications);
 

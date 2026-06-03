@@ -78,10 +78,14 @@ chrome.runtime.onMessage.addListener(
     sender: chrome.runtime.MessageSender,
     sendResponse: (response?: unknown) => void
   ) => {
-    const tabId = sender.tab?.id;
-
     (async () => {
       try {
+        let tabId = sender.tab?.id;
+        if (!tabId) {
+          const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+          tabId = activeTab?.id;
+        }
+
         const settings = await loadSettings();
 
         switch (message.type) {
@@ -93,6 +97,16 @@ chrome.runtime.onMessage.addListener(
             }
             console.log(`[AutoMuteAds BG] Ad detected on tab ${tabId} (${payload?.platform ?? 'unknown'})`);
             await setTabMuted(tabId, true);
+            break;
+          }
+
+          case 'PLATFORM_DETECTED': {
+            if (!tabId) break;
+            const payload = message.payload as { platform: string } | undefined;
+            if (payload?.platform) {
+              platformByTab.set(tabId, payload.platform);
+              console.log(`[AutoMuteAds BG] Set platform ${payload.platform} for tab ${tabId}`);
+            }
             break;
           }
 

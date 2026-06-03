@@ -29,6 +29,35 @@ export function setNotificationsEnabled(enabled: boolean): void {
   notificationsEnabled = enabled;
 }
 
+function enforceMuteState(media: HTMLVideoElement | HTMLAudioElement): void {
+  try {
+    if (media instanceof HTMLVideoElement) {
+      if (!originalVolumes.has(media)) {
+        originalVolumes.set(media, media.volume ?? 1);
+      }
+      media.volume = 0;
+    }
+    media.muted = true;
+
+    if (!(media as any)._hasAutoMuteListener) {
+      (media as any)._hasAutoMuteListener = true;
+      media.addEventListener('volumechange', () => {
+        if (currentlyMuted) {
+          if (!media.muted || (media instanceof HTMLVideoElement && media.volume > 0)) {
+            console.log(`${TAG} Enforcing mute state on volumechange`);
+            media.muted = true;
+            if (media instanceof HTMLVideoElement) {
+              media.volume = 0;
+            }
+          }
+        }
+      });
+    }
+  } catch (err) {
+    console.warn(`${TAG} Failed to enforce mute state:`, err);
+  }
+}
+
 // ─── Dynamic media element observer (#1) ─────────────────────────────────────
 
 let mediaObserver: MutationObserver | null = null;
@@ -39,22 +68,12 @@ function startMediaObserver(): void {
     if (!currentlyMuted) return;
     for (const mutation of mutations) {
       for (const node of Array.from(mutation.addedNodes)) {
-        if (node instanceof HTMLVideoElement) {
-          if (!originalVolumes.has(node)) originalVolumes.set(node, node.volume);
-          node.muted = true;
-          console.log(`${TAG} Auto-muted dynamically added <video>`);
-        } else if (node instanceof HTMLAudioElement) {
-          node.muted = true;
-          console.log(`${TAG} Auto-muted dynamically added <audio>`);
+        if (node instanceof HTMLVideoElement || node instanceof HTMLAudioElement) {
+          enforceMuteState(node);
+          console.log(`${TAG} Auto-muted dynamically added media element`);
         } else if (node instanceof HTMLElement) {
-          // Check for video/audio nested inside added subtrees
-          node.querySelectorAll<HTMLVideoElement>('video').forEach((v) => {
-            if (!originalVolumes.has(v)) originalVolumes.set(v, v.volume);
-            v.muted = true;
-          });
-          node.querySelectorAll<HTMLAudioElement>('audio').forEach((a) => {
-            a.muted = true;
-          });
+          node.querySelectorAll<HTMLVideoElement>('video').forEach((v) => enforceMuteState(v));
+          node.querySelectorAll<HTMLAudioElement>('audio').forEach((a) => enforceMuteState(a));
         }
       }
     }
@@ -151,17 +170,12 @@ function muteAllVideoElements(): void {
 
   console.log(`${TAG} muteAllVideoElements — found ${videos.length} video(s), ${audios.length} audio(s)`);
 
-  videos.forEach((video, i) => {
-    if (!originalVolumes.has(video)) {
-      originalVolumes.set(video, video.volume ?? 1);
-    }
-    video.muted = true;
-    console.log(`${TAG}   video[${i}] muted (src: ${video.currentSrc?.slice(0, 60) ?? 'none'})`);
+  videos.forEach((video) => {
+    enforceMuteState(video);
   });
 
-  audios.forEach((audio, i) => {
-    audio.muted = true;
-    console.log(`${TAG}   audio[${i}] muted`);
+  audios.forEach((audio) => {
+    enforceMuteState(audio);
   });
 
   if (videos.length === 0 && audios.length === 0) {
