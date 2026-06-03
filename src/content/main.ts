@@ -112,6 +112,59 @@ function isWhitelisted(): boolean {
 
 const TAG = '[AutoMuteAds]';
 
+function tryClickSkipButtons(): void {
+  const SKIP_BUTTON_SELECTORS = [
+    // YouTube
+    '.ytp-ad-skip-button',
+    '.ytp-ad-skip-button-modern',
+    '.ytp-ad-skip-button-container',
+    '.ytp-ad-skip-button-slot',
+    '.ytp-ad-skip-button-text',
+    // Prime Video
+    '[data-testid="ad-skip-button"]',
+    // Netflix
+    '[data-uia="ad-skip-button"]',
+    // Disney+
+    '[data-testid="skip-ad-button"]',
+    // Hotstar
+    '[class*="ad-skip"]',
+    '[class*="AdSkip"]',
+    '[class*="skip-ad"]',
+    // SonyLIV
+    '[class*="skipAd"]',
+    '[class*="SkipAd"]',
+    // Generic / others
+    '.video-ad-skip-button',
+    '.skip-button',
+    'button.skip'
+  ];
+
+  for (const selector of SKIP_BUTTON_SELECTORS) {
+    try {
+      const element = document.querySelector(selector) as HTMLElement | null;
+      if (element) {
+        // Basic visibility check
+        const style = window.getComputedStyle(element);
+        const isVisible = style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+        
+        if (isVisible) {
+          console.log(`${TAG} Found skip button matching "${selector}". Clicking it.`);
+          
+          // Click standard DOM element
+          element.click();
+          
+          // Dispatch a full click event sequence just in case
+          element.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+          element.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
+          break; // Clicked one, no need to check others in this tick
+        }
+      }
+    } catch {
+      // Ignore invalid selectors
+    }
+  }
+}
+
 // ─── Detection tick ───────────────────────────────────────────────────────────
 
 function runDetection(mutationBonus: number = 0): void {
@@ -153,6 +206,11 @@ function runDetection(mutationBonus: number = 0): void {
     }
   } else {
     consecutiveLowScoreTicks = 0;
+  }
+
+  // Click on skip button if available when muted/ad playing
+  if (total >= threshold) {
+    tryClickSkipButtons();
   }
 }
 
