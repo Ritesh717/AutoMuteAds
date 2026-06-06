@@ -1,4 +1,4 @@
-# AutoMuteAds
+# [AutoMuteAds](https://chromewebstore.google.com/detail/automuteads/mifjdjiholhkmemifghhbpcdpafdlkjc)
 
 AutoMuteAds is a lightweight Chrome Extension that silently monitors streaming platforms and automatically mutes your browser tab the instant a video advertisement starts playing. Audio is automatically restored as soon as the ad is over, ensuring a seamless and uninterrupted viewing experience.
 
